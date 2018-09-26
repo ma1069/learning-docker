@@ -1,58 +1,49 @@
 # Learning Locker (http://learninglocker.net/) LRS container
-# Based on work from https://github.com/LearningLocker/docs/issues/15
-# Version 1
+# Based on http://docs.learninglocker.net/guides-custom-installation/
+# Version 2
 
 # Pull and use the centos7 image as the base
 FROM centos:centos7
 USER root
 
-MAINTAINER Paulo Gomes
-
-#VOLUME /var/www
+MAINTAINER Fluentify devz@fluentify.com
 
 # Update image
 RUN yum update -y
 
 # Install Remi Collet Repository
-RUN rpm -Uvh http://dl.fedoraproject.org/pub/epel/7/x86_64/e/epel-release-7-7.noarch.rpm && rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
+RUN yum install -y epel-release
+RUN rpm -Uvh http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
 
-# Install apache, php
-RUN yum -y --enablerepo=remi,remi-php56 install httpd php php-pdo php-common php-cli php-pear php-mysqlnd php-pecl-mongo php-gd php-mbstring* php-mcrypt php-xml mongodb nodejs npm git deltarpm
+# Install stuff
+RUN yum install -y --enablerepo=remi curl git python make automake gcc gcc-c++ kernel-devel xorg-x11-server-Xvfb git-core npm nodejs nginx
 
 # Install Bower
-RUN npm install -g bower
-
-# Install Composer and set global launch
-RUN curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/local/bin/composer
-
-# need to create directories per /usr/lib/tmpfiles.d/httpd.conf
-RUN rm -rf /run/httpd/*; mkdir -p /run/httpd/htcacheclean; chmod 710 /run/httpd; chmod 700 /run/httpd/htcacheclean; chown root:apache /run/httpd; chown apache:apache /run/httpd/htcacheclean
-
-# clone learninglocker via git
-RUN git clone https://github.com/LearningLocker/learninglocker.git /learninglocker
+RUN npm install -g yarn
+RUN npm install -g pm2
+RUN pm2 install pm2-logrotate
+RUN pm2 set pm2-logrotate:compress true
 
 # install learninglocker
-RUN cd /learninglocker; composer install
+RUN git clone https://github.com/LearningLocker/learninglocker.git /learninglocker
+ADD ./conf/llocker.env /learninglocker/.env
+RUN cd /learninglocker; yarn install; 
+RUN cd /learninglocker; yarn build-all
 
-# modify apache settings
-ADD /conf/vhost.conf /etc/httpd/conf.d/vhost.conf
-RUN sed -i "s/^DocumentRoot.*//g" /etc/httpd/conf/httpd.conf
+# install xAPI
+RUN git clone https://github.com/LearningLocker/xapi-service.git /xapi
+ADD ./conf/xapi.env /xapi/.env
+RUN cd /xapi; yarn install --ignore-engines
+RUN cd /xapi; yarn build
 
 # add local configurations
-ADD ./conf/app.php /learninglocker/app/config/local/app.php
-ADD ./conf/database.php /learninglocker/app/config/local/database.php
-ADD ./conf/mail.php /learninglocker/app/config/local/mail.php
-
-# add migrations script
-ADD migrations.sh /migrations.sh
-RUN chmod +x /migrations.sh
-
-RUN chown -R apache:apache /learninglocker
-RUN cd  /var/www; ln -s /learninglocker
+ADD ./conf/nginx.conf /etc/nginx.conf
 
 # create our container startup script
 ADD run.sh /usr/bin/run.sh
 RUN chmod +x /usr/bin/run.sh
+
+EXPOSE 3001 3000
 
 # define entrypoint so ll will start from docker run
 ENTRYPOINT ["/usr/bin/run.sh"]

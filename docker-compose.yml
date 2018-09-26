@@ -1,11 +1,3 @@
-mailhog:
-  container_name: mailhog
-  hostname: mailhog
-  domainname: docker
-  image: diyan/mailhog
-  ports:
-    - "1025:1025"
-    - "8025:8025"
 mongo:
   container_name: mongo
   build: ./mongo
@@ -15,22 +7,27 @@ mongo:
     - ./app/data/db:/data/db
   ports:
     - "27017:27017"
+    - "6379:6379"
+  expose:
+    - "27017"
+    - "6379"
   environment:
     - DEBUG=true
 learninglocker:
   container_name: learninglocker
   build: ./locker
   ports:
-    - "8080:80"
+    - "3000:3000"
+    - "3001:3001"
   expose:
-    - "8080"
+    - "3000"
+    - "3001"
   hostname: learninglocker
   domainname: docker
   environment:
     - VIRTUAL_HOST=learninglocker.docker
     - DEBUG=true
   volumes:
-    - ./app/logs:/var/log/httpd
+    - ./app/logs:/var/log/nginx
   links:
     - mongo
-    - mailhog

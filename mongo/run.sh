@@ -1,6 +1,10 @@
 #!/bin/bash
 set -m
 
+#Running redis
+redis-server /etc/redis.conf &
+
+#Running mongo
 mongodb_cmd="mongod --storageEngine $STORAGE_ENGINE"
 cmd="$mongodb_cmd --httpinterface --rest --master"
 
@@ -18,7 +22,7 @@ fi
 
 $cmd &
 
-if [ ! -f /.mongodb_password_set ]; then
+if [ ! -f /.mongodb_password_set2 ]; then
     /set_mongodb_password.sh
 fi
 

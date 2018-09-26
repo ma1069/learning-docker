@@ -27,7 +27,7 @@ use llocker
 db.createUser({user: "${USER}", pwd: "${PASS}", roles: [{role:'readWrite', db:"${DATABASE}"}]});
 EOF
 
-touch /.mongodb_password_set
+touch /.mongodb_password_set2
 
 echo "    Configured Database: $DATABASE  User: $USER  Pass: $PASS "
 echo ""

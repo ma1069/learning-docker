@@ -1,25 +1,18 @@
 #!/bin/bash
-# Make sure we're not confused by old, incompletely-shutdown httpd
-# context after restarting the container. httpd won't start correctly
-# if it thinks it is already running.
-
-rm -rf /run/httpd/*
 sleep 5
 
-# need to create directories per /usr/lib/tmpfiles.d/httpd.conf
-mkdir -p /run/httpd/htcacheclean
-chmod 710 /run/httpd
-chmod 700 /run/httpd/htcacheclean
+echo "Launching nginx"
+nginx -c /etc/nginx.conf
 
-chown root:apache /run/httpd
-chown apache:apache /run/httpd/htcacheclean
+bash -c 'sleep 5; cd /learninglocker; node cli/dist/server createSiteAdmin admin@company.com Admin 4dmintest' &
 
-if [ ! -f /.migrations_done ]; then
-  cd /var/www/learninglocker
-  php artisan migrate && touch /.migrations_done
-fi
+echo "Launching Learning Locker"
+cd /learninglocker
+node ui/dist/server &
+node api/dist/server &
+node worker/dist/server &
 
-echo " Done! Starting apache..."
-exec /usr/sbin/apachectl -D FOREGROUND
-
+echo "Launching Learning Locker xAPI"
+cd /xapi
+node dist/server.js
 
